@@ -1,6 +1,6 @@
 # План разработки «Pinduoduo KZ Calc»
 
-Источник требований: [TZ.md](TZ.md). Статус: этап 0 готов (`assembleDebug` проходит), дальше этап 1.
+Источник требований: [TZ.md](TZ.md). Статус: этапы 0–2 готовы (`assembleDebug`, `CalculateDeliveryUseCaseTest` и `NbkRatesParsingTest` зелёные), дальше этап 3.
 
 ## Принятые решения
 
