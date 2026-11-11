@@ -28,6 +28,7 @@ import com.suldev.kit.touch.IosOverscrollEffect
 import com.suldev.kit.touch.iosOverscroll
 import com.suldev.kit.touch.rememberIosOverscrollConnection
 import com.suldev.kit.touch.rememberIosOverscrollEffect
+import com.suldev.pddkz.ui.theme.LocalBackdropIsDark
 import com.suldev.pddkz.ui.theme.LocalGlassState
 import com.suldev.pddkz.ui.theme.PddTheme
 import com.suldev.ui.sulTopBarContentPadding
@@ -46,6 +47,7 @@ fun ScreenList(
     content: LazyListScope.() -> Unit,
 ) {
     val glassState = LocalGlassState.current
+    val headerColors = PddTheme.colorsFor(LocalBackdropIsDark.current)
     val overscrollConnection = rememberIosOverscrollConnection(overscroll)
     val navBottom = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
 
@@ -70,14 +72,14 @@ fun ScreenList(
                 Text(
                     text = title,
                     style = MaterialTheme.typography.displayLarge,
-                    color = PddTheme.colors.label,
+                    color = headerColors.label,
                     modifier = Modifier.padding(start = 4.dp).semantics { heading() },
                 )
                 if (subtitle != null) {
                     Text(
                         text = subtitle,
                         style = MaterialTheme.typography.bodySmall,
-                        color = PddTheme.colors.secondaryLabel,
+                        color = headerColors.secondaryLabel,
                         modifier = Modifier.padding(start = 4.dp),
                     )
                 }

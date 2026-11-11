@@ -41,6 +41,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.suldev.kit.haptics.HapticPattern
 import com.suldev.kit.haptics.rememberHapticDevice
+import com.suldev.pddkz.ui.theme.LocalReduceMotion
 import com.suldev.pddkz.ui.theme.PddTheme
 import com.suldev.ui.SulAlertDialog
 import com.suldev.ui.SulSegmentedControl
@@ -51,7 +52,14 @@ fun SegmentedControl(
     selectedIndex: Int,
     onSelect: (Int) -> Unit,
     modifier: Modifier = Modifier,
-) = SulSegmentedControl(options, selectedIndex, onSelect, PddTheme.colors.sul, modifier)
+) = SulSegmentedControl(
+    options = options,
+    selectedIndex = selectedIndex,
+    onSelect = onSelect,
+    colors = PddTheme.colors.sul,
+    modifier = modifier,
+    reduceMotion = LocalReduceMotion.current,
+)
 
 @Composable
 fun IOSAlertDialog(

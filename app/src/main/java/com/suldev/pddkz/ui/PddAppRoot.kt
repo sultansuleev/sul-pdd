@@ -7,12 +7,17 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.EnterTransition
+import androidx.compose.animation.ExitTransition
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.animation.scaleIn
+import androidx.compose.animation.scaleOut
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.togetherWith
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.asPaddingValues
@@ -66,6 +71,8 @@ import com.suldev.kit.touch.FloatingBarsTapGuard
 import com.suldev.kit.touch.rememberIosOverscrollEffect
 import com.suldev.pddkz.data.storage.BackgroundImageStorage
 import com.suldev.pddkz.domain.model.AppSettings
+import com.suldev.pddkz.domain.model.BackgroundStyle
+import com.suldev.pddkz.domain.model.ThemeMode
 import com.suldev.pddkz.ui.components.AppBackground
 import com.suldev.pddkz.ui.components.GlassSnackbar
 import com.suldev.pddkz.ui.components.IOSAlertDialog
@@ -163,6 +170,9 @@ fun PddAppRoot(
     SideEffect {
         glassState.reduceTransparency = settings.reduceTransparency
         inlineGlassState.reduceTransparency = settings.reduceTransparency
+        glassState.increaseContrast = highContrast
+        inlineGlassState.increaseContrast = highContrast
+        glassState.sampleLuminance = settings.backgroundStyle != BackgroundStyle.PLAIN
     }
 
     var activeTab by rememberSaveable { mutableIntStateOf(0) }
@@ -172,187 +182,216 @@ fun PddAppRoot(
         derivedStateOf { (if (activeTab == 0) calculatorList else settingsList).firstVisibleItemIndex > 0 }
     }
 
+    val themeIsDark = when (settings.themeMode) {
+        ThemeMode.SYSTEM -> isSystemInDarkTheme()
+        ThemeMode.LIGHT -> false
+        ThemeMode.DARK -> true
+    }
+    val useMeasuredBackdrop = settings.backgroundStyle != BackgroundStyle.PLAIN && glassState.hasBackdropLuminance
+    val backdropIsDark = if (useMeasuredBackdrop) glassState.backdropIsDark else themeIsDark
+    val chromeColors = PddTheme.colorsFor(backdropIsDark)
+    SystemBarIcons(lightIcons = backdropIsDark)
+
     PddTheme(
         themeMode = settings.themeMode,
         glassState = glassState,
         inlineGlassState = inlineGlassState,
         reduceTransparency = settings.reduceTransparency,
+        reduceMotion = reduceMotion,
+        backdropIsDark = backdropIsDark,
     ) {
-        val c = PddTheme.colors
-        SystemBarIcons(lightIcons = c.isDark)
-        val navBottom = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
-        val backgroundImage = rememberBackgroundImage(
-            style = settings.backgroundStyle,
-            backgroundFileName = backgroundFileName,
-            onDecodeFailed = { scope.launch { backgroundImageStorage.clear() } },
-        )
-        val background: @Composable () -> Unit = {
-            AppBackground(settings.backgroundStyle, backgroundImage, effectiveDim)
-        }
+            val navBottom = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
+            val backgroundImage = rememberBackgroundImage(
+                style = settings.backgroundStyle,
+                backgroundFileName = backgroundFileName,
+                onDecodeFailed = { scope.launch { backgroundImageStorage.clear() } },
+            )
+            val background: @Composable () -> Unit = {
+                AppBackground(settings.backgroundStyle, backgroundImage, effectiveDim)
+            }
 
-        Box(Modifier.fillMaxSize().materialFluidPointer(glassState)) {
-            // [1] Источник A: только фон.
-            Box(Modifier.matchParentSize().materialFluidSource(inlineGlassState)) { background() }
+            Box(Modifier.fillMaxSize().materialFluidPointer(glassState)) {
+                // [1] Источник A: только фон.
+                Box(Modifier.matchParentSize().materialFluidSource(inlineGlassState)) { background() }
 
-            // [2] Источник B: фон + контент вкладок.
-            Box(Modifier.matchParentSize().materialFluidSource(glassState)) {
-                background()
-                AnimatedContent(
-                    targetState = activeTab,
-                    transitionSpec = {
-                        val direction = if (targetState > initialState) 1 else -1
-                        (slideInHorizontally(spring(dampingRatio = 1f, stiffness = 380f)) { direction * it / 14 } +
-                            fadeIn(tween(180))) togetherWith fadeOut(tween(120))
-                    },
-                    label = "tabContent",
-                ) { tab ->
-                    when (tab) {
-                        0 -> CalculatorScreen(
-                            state = calculator,
-                            listState = calculatorList,
-                            overscroll = calculatorOverscroll,
-                            onFieldChange = viewModel::onFieldChange,
-                            onCurrencyChange = viewModel::onCurrencyChange,
-                            onRefreshRates = viewModel::refreshRates,
-                            onOpenFormulas = { formulaFocus = it },
-                        )
-                        else -> SettingsScreen(
-                            listState = settingsList,
-                            settings = settings,
-                            hasBackgroundPhoto = !backgroundFileName.isNullOrBlank(),
-                            rates = calculator.rates,
-                            highContrast = highContrast,
-                            reduceMotion = reduceMotion,
-                            onUpdateSettings = onUpdateSettings,
-                            onPreviewDimOpacity = { dimPreview = it },
-                            onPickPhoto = {
-                                photoPicker.launch(
-                                    PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly),
-                                )
-                            },
-                            onClearPhoto = {
-                                scope.launch {
-                                    backgroundImageStorage.clear()
-                                    snackbarHostState.showSnackbar("Фото фона удалено")
-                                }
-                            },
-                            onRefreshRates = {
-                                awaitingRatesFeedback = true
-                                viewModel.refreshRates()
-                            },
-                        )
+                // [2] Источник B: фон + контент вкладок.
+                Box(Modifier.matchParentSize().materialFluidSource(glassState)) {
+                    background()
+                    AnimatedContent(
+                        targetState = activeTab,
+                        transitionSpec = {
+                            if (reduceMotion) {
+                                EnterTransition.None togetherWith ExitTransition.None
+                            } else {
+                                val direction = if (targetState > initialState) 1 else -1
+                                (slideInHorizontally(spring(dampingRatio = 1f, stiffness = 380f)) { direction * it / 14 } +
+                                    fadeIn(tween(180)) +
+                                    scaleIn(
+                                        initialScale = 0.985f,
+                                        animationSpec = spring(dampingRatio = 1f, stiffness = 380f),
+                                    )) togetherWith (fadeOut(tween(120)) +
+                                    scaleOut(
+                                        targetScale = 0.99f,
+                                        animationSpec = spring(dampingRatio = 1f, stiffness = 380f),
+                                    ))
+                            }
+                        },
+                        label = "tabContent",
+                    ) { tab ->
+                        when (tab) {
+                            0 -> CalculatorScreen(
+                                state = calculator,
+                                listState = calculatorList,
+                                overscroll = calculatorOverscroll,
+                                onFieldChange = viewModel::onFieldChange,
+                                onCurrencyChange = viewModel::onCurrencyChange,
+                                onRefreshRates = viewModel::refreshRates,
+                                onOpenFormulas = { formulaFocus = it },
+                            )
+                            else -> SettingsScreen(
+                                listState = settingsList,
+                                settings = settings,
+                                hasBackgroundPhoto = !backgroundFileName.isNullOrBlank(),
+                                rates = calculator.rates,
+                                highContrast = highContrast,
+                                reduceMotion = reduceMotion,
+                                onUpdateSettings = onUpdateSettings,
+                                onPreviewDimOpacity = { dimPreview = it },
+                                onPickPhoto = {
+                                    photoPicker.launch(
+                                        PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly),
+                                    )
+                                },
+                                onClearPhoto = {
+                                    scope.launch {
+                                        backgroundImageStorage.clear()
+                                        snackbarHostState.showSnackbar("Фото фона удалено")
+                                    }
+                                },
+                                onRefreshRates = {
+                                    awaitingRatesFeedback = true
+                                    viewModel.refreshRates()
+                                },
+                            )
+                        }
                     }
                 }
-            }
 
-            // [3] Перехват промахов мимо плавающего таб-бара.
-            FloatingBarsTapGuard(
-                totalHeight = 64.dp + navBottom + 10.dp,
-                margin = 16.dp,
-                modifier = Modifier.align(Alignment.BottomCenter),
-            )
+                // [3] Перехват промахов мимо плавающего таб-бара.
+                FloatingBarsTapGuard(
+                    totalHeight = 64.dp + navBottom + 10.dp,
+                    margin = 16.dp,
+                    modifier = Modifier.align(Alignment.BottomCenter),
+                )
 
-            // [4] Верхний бар — сиблинг источника B.
-            SulTopBar(
-                title = TabTitles[activeTab],
-                scrolled = scrolled,
-                state = glassState,
-                contentColor = c.label,
-                actions = if (activeTab != 0) null else {
-                    {
-                        IconButton(
-                            onClick = {
-                                haptics.play(HapticPattern.Click)
-                                formulaFocus = FormulaFocus.ALL
-                            },
-                        ) {
-                            Icon(
-                                Icons.Filled.Info,
-                                contentDescription = "Формулы расчёта",
-                                tint = c.label,
-                                modifier = Modifier.size(20.dp),
-                            )
+                // [4] Верхний бар — сиблинг источника B.
+                SulTopBar(
+                    title = TabTitles[activeTab],
+                    scrolled = scrolled,
+                    state = glassState,
+                    contentColor = chromeColors.label,
+                    actions = if (activeTab != 0) null else {
+                        {
+                            IconButton(
+                                onClick = {
+                                    haptics.play(HapticPattern.Click)
+                                    formulaFocus = FormulaFocus.ALL
+                                },
+                            ) {
+                                Icon(
+                                    Icons.Filled.Info,
+                                    contentDescription = "Формулы расчёта",
+                                    tint = chromeColors.label,
+                                    modifier = Modifier.size(20.dp),
+                                )
+                            }
+                            IconButton(
+                                onClick = {
+                                    haptics.play(HapticPattern.Click)
+                                    showResetDialog = true
+                                },
+                            ) {
+                                Icon(
+                                    Icons.Filled.RestartAlt,
+                                    contentDescription = "Сбросить",
+                                    tint = chromeColors.label,
+                                    modifier = Modifier.size(20.dp),
+                                )
+                            }
                         }
-                        IconButton(onClick = { showResetDialog = true }) {
-                            Icon(
-                                Icons.Filled.RestartAlt,
-                                contentDescription = "Сбросить",
-                                tint = c.label,
-                                modifier = Modifier.size(20.dp),
-                            )
-                        }
-                    }
-                },
-                refreshing = activeTab == 0 && calculator.refreshing,
-                pullFraction = {
-                    when {
-                        activeTab != 0 -> 0f
-                        calculator.refreshing -> 1f
-                        else -> (calculatorOverscroll.rawPullY / pullTriggerPx).coerceIn(0f, 2f)
-                    }
-                },
-                modifier = Modifier.align(Alignment.TopCenter).fillMaxWidth(),
-            )
-
-            // [5] Таб-бар — сиблинг источника B.
-            SulGlassTabBar(
-                tabs = Tabs,
-                selectedIndex = activeTab,
-                onTabSelected = { activeTab = it },
-                state = glassState,
-                chromeTint = c.liquidTint,
-                contentColor = c.tint,
-                unselectedColor = c.secondaryLabel,
-                selectionColor = Color.White.copy(
-                    alpha = when {
-                        c.isDark -> 0.22f
-                        settings.material == MaterialFluidMaterial.Liquid -> 0.38f
-                        else -> 0.65f
                     },
-                ),
-                borderTop = c.glassHighlight,
-                borderBottom = c.glassBorder,
-                modifier = Modifier.align(Alignment.BottomCenter).fillMaxWidth(),
-            )
+                    refreshing = activeTab == 0 && calculator.refreshing,
+                    pullFraction = {
+                        when {
+                            activeTab != 0 -> 0f
+                            calculator.refreshing -> 1f
+                            else -> (calculatorOverscroll.rawPullY / pullTriggerPx).coerceIn(0f, 2f)
+                        }
+                    },
+                    modifier = Modifier.align(Alignment.TopCenter).fillMaxWidth(),
+                )
 
-            // [6] Снекбар над таб-баром.
-            SnackbarHost(
-                hostState = snackbarHostState,
-                snackbar = { GlassSnackbar(it.visuals.message) },
-                modifier = Modifier
-                    .align(Alignment.BottomCenter)
-                    .padding(start = 16.dp, end = 16.dp, bottom = 96.dp + navBottom),
-            )
+                // [5] Таб-бар — сиблинг источника B.
+                SulGlassTabBar(
+                    tabs = Tabs,
+                    selectedIndex = activeTab,
+                    onTabSelected = { activeTab = it },
+                    state = glassState,
+                    chromeTint = chromeColors.liquidTint,
+                    contentColor = chromeColors.tint,
+                    unselectedColor = chromeColors.secondaryLabel,
+                    selectionColor = Color.White.copy(
+                        alpha = when {
+                            backdropIsDark -> 0.22f
+                            settings.material == MaterialFluidMaterial.Liquid -> 0.38f
+                            else -> 0.65f
+                        },
+                    ),
+                    borderTop = chromeColors.glassHighlight,
+                    borderBottom = chromeColors.glassBorder,
+                    onDarkBackdrop = settings.backgroundStyle == BackgroundStyle.IMAGE && backdropIsDark,
+                    reduceMotion = reduceMotion,
+                    modifier = Modifier.align(Alignment.BottomCenter).fillMaxWidth(),
+                )
 
-            // [7] Шторка формул и диалоги — последним сиблингом над хромом.
-            SheetPortal(
-                visible = formulaFocus != null,
-                onDismiss = { formulaFocus = null },
-            ) { scrollModifier ->
-                FormulaDetailsSheet(
-                    state = calculator,
-                    focus = lastFormulaFocus,
-                    scrollModifier = scrollModifier,
+                // [6] Снекбар над таб-баром.
+                SnackbarHost(
+                    hostState = snackbarHostState,
+                    snackbar = { GlassSnackbar(it.visuals.message) },
+                    modifier = Modifier
+                        .align(Alignment.BottomCenter)
+                        .padding(start = 16.dp, end = 16.dp, bottom = 96.dp + navBottom),
+                )
+
+                // [7] Шторка формул и диалоги — последним сиблингом над хромом.
+                SheetPortal(
+                    visible = formulaFocus != null,
                     onDismiss = { formulaFocus = null },
-                )
-            }
+                ) { scrollModifier ->
+                    FormulaDetailsSheet(
+                        state = calculator,
+                        focus = lastFormulaFocus,
+                        scrollModifier = scrollModifier,
+                        onDismiss = { formulaFocus = null },
+                    )
+                }
 
-            if (showResetDialog) {
-                IOSAlertDialog(
-                    onDismiss = { showResetDialog = false },
-                    title = "Сбросить настройки?",
-                    message = "Параметры посылки, тарифы и сроки вернутся к исходным значениям. Курсы НБ РК сохранятся.",
-                    confirmLabel = "Сбросить",
-                    confirmDestructive = true,
-                    dismissLabel = "Отмена",
-                    onConfirm = {
-                        viewModel.resetDefaults()
-                        showResetDialog = false
-                    },
-                )
+                if (showResetDialog) {
+                    IOSAlertDialog(
+                        onDismiss = { showResetDialog = false },
+                        title = "Сбросить настройки?",
+                        message = "Параметры посылки, тарифы и сроки вернутся к исходным значениям. Курсы НБ РК сохранятся.",
+                        confirmLabel = "Сбросить",
+                        confirmDestructive = true,
+                        dismissLabel = "Отмена",
+                        onConfirm = {
+                            viewModel.resetDefaults()
+                            showResetDialog = false
+                        },
+                    )
+                }
             }
         }
-    }
 }
 
 /** Иконки системных баров следуют теме приложения, а не системы. */

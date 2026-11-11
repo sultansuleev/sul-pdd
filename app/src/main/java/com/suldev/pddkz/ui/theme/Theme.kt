@@ -156,9 +156,17 @@ val LocalInlineGlassState = compositionLocalOf<MaterialFluidState?> { null }
 /** Настройка «Уменьшить прозрачность»: стекло заменяется плотной заливкой. */
 val LocalReduceTransparency = compositionLocalOf { false }
 
+/** Системное «Уменьшение движения» (`animator_duration_scale == 0`). */
+val LocalReduceMotion = compositionLocalOf { false }
+
+/** Фактическая яркость фона за верхним хромом/заголовком (для автоконтраста на фото/меше). */
+val LocalBackdropIsDark = compositionLocalOf { false }
+
 object PddTheme {
     val colors: PddColors
         @Composable @ReadOnlyComposable get() = LocalPddColors.current
+
+    fun colorsFor(dark: Boolean): PddColors = if (dark) DarkColors else LightColors
 }
 
 @Composable
@@ -167,6 +175,8 @@ fun PddTheme(
     glassState: MaterialFluidState? = null,
     inlineGlassState: MaterialFluidState? = null,
     reduceTransparency: Boolean = false,
+    reduceMotion: Boolean = false,
+    backdropIsDark: Boolean? = null,
     content: @Composable () -> Unit,
 ) {
     val dark = when (themeMode) {
@@ -175,6 +185,7 @@ fun PddTheme(
         ThemeMode.DARK -> true
     }
     val c = if (dark) DarkColors else LightColors
+    val effectiveBackdropIsDark = backdropIsDark ?: dark
     val scheme = if (dark) {
         darkColorScheme(
             primary = c.tint, onPrimary = c.onTint, background = c.background, onBackground = c.label,
@@ -193,6 +204,8 @@ fun PddTheme(
         LocalGlassState provides glassState,
         LocalInlineGlassState provides inlineGlassState,
         LocalReduceTransparency provides reduceTransparency,
+        LocalReduceMotion provides reduceMotion,
+        LocalBackdropIsDark provides effectiveBackdropIsDark,
     ) {
         MaterialTheme(colorScheme = scheme, typography = IOSTypography, content = content)
     }

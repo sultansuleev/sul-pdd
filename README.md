@@ -7,7 +7,7 @@
 
 Приложение воспроизводит доменную модель, форматы и работу с курсами НБ РК веб-калькулятора [`pdd-kz-calc.netlify.app`](https://pdd-kz-calc.netlify.app/), перенося интерфейс в стек экосистемы **suldev** (`Material Fluid` + `suldev-ui` + `suldev-kit`).
 
-> **Текущий статус:** завершён **этап 0** (каркас проекта, `assembleDebug` проходит). Подробные требования — в [`TZ.md`](TZ.md), поэтапный план — в [`PLAN.md`](PLAN.md).
+> **Текущий статус:** реализованы **этапы 0–7** (готовы все экраны, настройки фона/доступности, автоконтраст, reduced motion, тесты и релизная сборка). Подробные требования — в [`TZ.md`](TZ.md), поэтапный план — в [`PLAN.md`](PLAN.md).
 
 ---
 
@@ -74,10 +74,11 @@ git clone https://github.com/sultansuleev/suldev-kit.git ../suldev-kit
 git clone https://github.com/sultansuleev/suldev-ui.git ../suldev-ui
 ```
 
-Сборка debug APK и запуск тестов:
+Сборка debug/release APK и запуск тестов:
 
 ```bash
 ./gradlew assembleDebug
+./gradlew assembleRelease
 ./gradlew test
 ```
 
@@ -86,10 +87,10 @@ git clone https://github.com/sultansuleev/suldev-ui.git ../suldev-ui
 ## Этапы разработки
 
 - [x] **0. Каркас** — `git`, `.gitignore`, Gradle wrapper, композитные сборки, пустая `MainActivity` с `enableEdgeToEdge`.
-- [ ] **1. Домен** — модели, `CalculateDeliveryUseCase`, форматтеры, unit-тесты.
-- [ ] **2. Данные** — `NbkRatesApi`, `PreferencesStorage` (DataStore), `RatesRepository` с оффлайн-кэшем.
-- [ ] **3. UI-кит, тема и корень** — доработка `suldev-ui`, `PddColors`, `PddAppRoot` (7 слоёв и два источника `Material Fluid`).
-- [ ] **4. Экран «Калькулятор»** — `PddCalculatorViewModel`, поля, сравнение, pull-to-refresh, диалог сброса.
-- [ ] **5. Шторка формул** — `SwipeDismissSheet` + `SheetPortal`, пошаговый разбор и точка безубыточности.
-- [ ] **6. Экран «Настройки»** — тема, материал стекла, фон (включая `BackgroundImageStorage`), доступность.
-- [ ] **7. Полировка и приёмка** — автоконтраст, `reduceMotion`, аудит тактильности и чек-лист [`TZ.md`](TZ.md) §8.
+- [x] **1. Домен** — модели, `CalculateDeliveryUseCase`, форматтеры, unit-тесты.
+- [x] **2. Данные** — `NbkRatesApi`, `PreferencesStorage` (DataStore), `RatesRepository` с оффлайн-кэшем.
+- [x] **3. UI-кит, тема и корень** — доработка `suldev-ui`, `PddColors`, `PddAppRoot` (7 слоёв и два источника `Material Fluid`).
+- [x] **4. Экран «Калькулятор»** — `PddCalculatorViewModel`, поля, сравнение, pull-to-refresh, диалог сброса.
+- [x] **5. Шторка формул** — `SwipeDismissSheet` + `SheetPortal`, пошаговый разбор и точка безубыточности.
+- [x] **6. Экран «Настройки»** — тема, материал стекла, фон (включая `BackgroundImageStorage`), доступность.
+- [x] **7. Полировка и приёмка** — автоконтраст (`sampleLuminance`), `increaseContrast` на `ON_RESUME`, `reduceMotion`, аудит тактильности и релизная сборка.

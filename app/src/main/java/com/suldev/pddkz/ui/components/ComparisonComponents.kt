@@ -1,6 +1,7 @@
 package com.suldev.pddkz.ui.components
 
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.snap
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -46,6 +47,7 @@ import com.suldev.pddkz.domain.formatCurrency
 import com.suldev.pddkz.domain.formatPct
 import com.suldev.pddkz.domain.model.ComparisonOutcome
 import com.suldev.pddkz.domain.model.DisplayCurrency
+import com.suldev.pddkz.ui.theme.LocalReduceMotion
 import com.suldev.pddkz.ui.theme.PddTheme
 
 val KazpostIcon: ImageVector = Icons.Filled.LocalPostOffice
@@ -176,7 +178,11 @@ fun DeliveryMethodCard(
 ) {
     val c = PddTheme.colors
     val haptics = rememberHapticDevice()
-    val alpha by animateFloatAsState(if (dimmed) 0.70f else 1f, tween(200), label = "methodAlpha")
+    val alpha by animateFloatAsState(
+        targetValue = if (dimmed) 0.70f else 1f,
+        animationSpec = if (LocalReduceMotion.current) snap() else tween(200),
+        label = "methodAlpha",
+    )
     GlassCard(
         modifier = modifier.graphicsLayer { this.alpha = alpha },
         onClick = onClick?.let { click ->
