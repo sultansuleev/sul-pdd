@@ -4,6 +4,10 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.activity.viewModels
+import com.suldev.pddkz.data.network.NbkRatesApi
+import com.suldev.pddkz.data.repository.RatesRepository
+import com.suldev.pddkz.ui.viewmodel.PddCalculatorViewModel
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.rememberCoroutineScope
@@ -18,6 +22,9 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
         super.onCreate(savedInstanceState)
         val storage = PreferencesStorage(applicationContext.pddDataStore)
+        val calculatorViewModel: PddCalculatorViewModel by viewModels {
+            PddCalculatorViewModel.Factory(RatesRepository(NbkRatesApi(), storage))
+        }
         setContent {
             // null до первого чтения DataStore: не мигаем дефолтной темой поверх сохранённой.
             val settings by storage.settings.collectAsState(initial = null)
@@ -28,6 +35,7 @@ class MainActivity : ComponentActivity() {
                     settings = loaded,
                     backgroundFileName = backgroundFileName,
                     onUpdateSettings = { transform -> scope.launch { storage.updateSettings(transform) } },
+                    viewModel = calculatorViewModel,
                 )
             }
         }

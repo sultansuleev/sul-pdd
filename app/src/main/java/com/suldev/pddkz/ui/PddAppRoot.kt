@@ -21,7 +21,20 @@ import androidx.compose.material.icons.filled.Calculate
 import androidx.compose.material.icons.filled.Tune
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material.icons.filled.RestartAlt
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.foundation.layout.size
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.snapshotFlow
+import androidx.compose.ui.platform.LocalDensity
+import com.suldev.kit.touch.rememberIosOverscrollEffect
+import com.suldev.pddkz.ui.components.IOSAlertDialog
+import com.suldev.pddkz.ui.viewmodel.PddCalculatorViewModel
+import kotlinx.coroutines.flow.filter
 import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
@@ -66,7 +79,21 @@ fun PddAppRoot(
     settings: AppSettings,
     backgroundFileName: String?,
     onUpdateSettings: ((AppSettings) -> AppSettings) -> Unit,
+    viewModel: PddCalculatorViewModel,
 ) {
+    val calculator by viewModel.uiState.collectAsState()
+    var showResetDialog by remember { mutableStateOf(false) }
+
+    // Pull-to-refresh: шайба в баре едет за сырой тягой списка, порог 80 dp.
+    val calculatorOverscroll = rememberIosOverscrollEffect()
+    val pullTriggerPx = with(LocalDensity.current) { 80.dp.toPx() }
+    LaunchedEffect(calculatorOverscroll, pullTriggerPx) {
+        // snapshotFlow вместо чтения в композиции: тяга меняется каждый кадр.
+        snapshotFlow { calculatorOverscroll.rawPullY >= pullTriggerPx }
+            .filter { it }
+            .collect { viewModel.refreshRates() }
+    }
+
     // Материал один на оба состояния; на отдельных компонентах не переопределяется.
     val glassState = rememberMaterialFluidState(material = settings.material)
     val inlineGlassState = rememberMaterialFluidState(material = settings.material)
@@ -113,7 +140,14 @@ fun PddAppRoot(
                     label = "tabContent",
                 ) { tab ->
                     when (tab) {
-                        0 -> CalculatorScreen(calculatorList)
+                        0 -> CalculatorScreen(
+                            state = calculator,
+                            listState = calculatorList,
+                            overscroll = calculatorOverscroll,
+                            onFieldChange = viewModel::onFieldChange,
+                            onCurrencyChange = viewModel::onCurrencyChange,
+                            onRefreshRates = viewModel::refreshRates,
+                        )
                         else -> SettingsScreen(settingsList, settings, onUpdateSettings)
                     }
                 }
@@ -132,6 +166,26 @@ fun PddAppRoot(
                 scrolled = scrolled,
                 state = glassState,
                 contentColor = c.label,
+                actions = if (activeTab != 0) null else {
+                    {
+                        IconButton(onClick = { showResetDialog = true }) {
+                            Icon(
+                                Icons.Filled.RestartAlt,
+                                contentDescription = "Сбросить",
+                                tint = c.label,
+                                modifier = Modifier.size(20.dp),
+                            )
+                        }
+                    }
+                },
+                refreshing = activeTab == 0 && calculator.refreshing,
+                pullFraction = {
+                    when {
+                        activeTab != 0 -> 0f
+                        calculator.refreshing -> 1f
+                        else -> (calculatorOverscroll.rawPullY / pullTriggerPx).coerceIn(0f, 2f)
+                    }
+                },
                 modifier = Modifier.align(Alignment.TopCenter).fillMaxWidth(),
             )
 
@@ -165,7 +219,21 @@ fun PddAppRoot(
                     .padding(start = 16.dp, end = 16.dp, bottom = 96.dp + navBottom),
             )
 
-            // [7] Шторки и диалоги — этап 5, последним сиблингом.
+            // [7] Диалоги; шторка формул — этап 5, тоже последним сиблингом.
+            if (showResetDialog) {
+                IOSAlertDialog(
+                    onDismiss = { showResetDialog = false },
+                    title = "Сбросить настройки?",
+                    message = "Параметры посылки, тарифы и сроки вернутся к исходным значениям. Курсы НБ РК сохранятся.",
+                    confirmLabel = "Сбросить",
+                    confirmDestructive = true,
+                    dismissLabel = "Отмена",
+                    onConfirm = {
+                        viewModel.resetDefaults()
+                        showResetDialog = false
+                    },
+                )
+            }
         }
     }
 }

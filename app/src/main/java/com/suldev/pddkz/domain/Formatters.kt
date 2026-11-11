@@ -25,3 +25,6 @@ fun parseDecimal(text: String): Double? =
 
 /** Количество: целое `>= 1`, иначе `null` (вызывающий подставляет фолбэк `1` и показывает подсказку). */
 fun parseQty(text: String): Int? = text.trim().toIntOrNull()?.takeIf { it >= 1 }
+
+/** Курс НБ РК для поля: два знака, десятичная запятая — `66,68`. */
+fun formatRate(value: Double): String = String.format(Locale.US, "%.2f", value).replace('.', ',')

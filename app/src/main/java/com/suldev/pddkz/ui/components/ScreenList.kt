@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
@@ -40,6 +41,7 @@ fun ScreenList(
     title: String,
     listState: LazyListState,
     modifier: Modifier = Modifier,
+    subtitle: String? = null,
     overscroll: IosOverscrollEffect = rememberIosOverscrollEffect(),
     content: LazyListScope.() -> Unit,
 ) {
@@ -53,6 +55,7 @@ fun ScreenList(
             state = listState,
             modifier = modifier
                 .fillMaxSize()
+                .imePadding()
                 .then(if (glassState != null) Modifier.materialFluidScroll(glassState) else Modifier)
                 .iosOverscroll(overscroll, overscrollConnection),
             contentPadding = PaddingValues(
@@ -70,6 +73,14 @@ fun ScreenList(
                     color = PddTheme.colors.label,
                     modifier = Modifier.padding(start = 4.dp).semantics { heading() },
                 )
+                if (subtitle != null) {
+                    Text(
+                        text = subtitle,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = PddTheme.colors.secondaryLabel,
+                        modifier = Modifier.padding(start = 4.dp),
+                    )
+                }
             }
             content()
         }
