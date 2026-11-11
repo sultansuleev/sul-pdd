@@ -1,6 +1,6 @@
 # План разработки «Pinduoduo KZ Calc»
 
-Источник требований: [TZ.md](TZ.md). Статус: этапы 0–2 готовы (`assembleDebug`, `CalculateDeliveryUseCaseTest` и `NbkRatesParsingTest` зелёные), дальше этап 3.
+Источник требований: [TZ.md](TZ.md). Статус: этапы 0–3 готовы (тесты зелёные; корень, стекло и фолбэк проверены на эмуляторах API 35 и API 30), дальше этап 4.
 
 ## Принятые решения
 
@@ -76,9 +76,9 @@
 
 ## Не проверено до старта
 
-- Есть ли `RefreshPuck` в `SulTopBar` (нужен на этапе 4).
+- ~~`RefreshPuck` в `SulTopBar`~~ — есть: параметры `refreshing` и `pullFraction`.
 - Есть ли `SwipeDismissSheet` / `SheetPortal` в `food-track` (этап 5; если нет — пишется с нуля, в кит).
-- Есть ли `TOGGLE_ON` / `TOGGLE_OFF` в `HapticPattern` (этап 6; иначе `View.performHapticFeedback`).
+- ~~`TOGGLE_ON` / `TOGGLE_OFF` в `HapticPattern`~~ — нет (есть `Click`, `Tick`, `LowTick`, `HeavyClick`, `DoubleTick`, `Error`); на этапе 6 — `View.performHapticFeedback`.
 - Точное поведение веб-эталона — сверяется на этапе 4.
 
 ## Риски
