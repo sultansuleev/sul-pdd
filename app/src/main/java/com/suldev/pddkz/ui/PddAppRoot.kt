@@ -18,6 +18,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Calculate
+import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Tune
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
@@ -31,8 +32,13 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.platform.LocalDensity
+import com.suldev.kit.haptics.HapticPattern
+import com.suldev.kit.haptics.rememberHapticDevice
 import com.suldev.kit.touch.rememberIosOverscrollEffect
 import com.suldev.pddkz.ui.components.IOSAlertDialog
+import com.suldev.pddkz.ui.components.SheetPortal
+import com.suldev.pddkz.ui.screens.FormulaDetailsSheet
+import com.suldev.pddkz.ui.screens.FormulaFocus
 import com.suldev.pddkz.ui.viewmodel.PddCalculatorViewModel
 import kotlinx.coroutines.flow.filter
 import androidx.compose.runtime.SideEffect
@@ -82,7 +88,11 @@ fun PddAppRoot(
     viewModel: PddCalculatorViewModel,
 ) {
     val calculator by viewModel.uiState.collectAsState()
+    val haptics = rememberHapticDevice()
     var showResetDialog by remember { mutableStateOf(false) }
+    var formulaFocus by rememberSaveable { mutableStateOf<FormulaFocus?>(null) }
+    var lastFormulaFocus by rememberSaveable { mutableStateOf(FormulaFocus.ALL) }
+    formulaFocus?.let { lastFormulaFocus = it }
 
     // Pull-to-refresh: шайба в баре едет за сырой тягой списка, порог 80 dp.
     val calculatorOverscroll = rememberIosOverscrollEffect()
@@ -147,6 +157,7 @@ fun PddAppRoot(
                             onFieldChange = viewModel::onFieldChange,
                             onCurrencyChange = viewModel::onCurrencyChange,
                             onRefreshRates = viewModel::refreshRates,
+                            onOpenFormulas = { formulaFocus = it },
                         )
                         else -> SettingsScreen(settingsList, settings, onUpdateSettings)
                     }
@@ -168,6 +179,19 @@ fun PddAppRoot(
                 contentColor = c.label,
                 actions = if (activeTab != 0) null else {
                     {
+                        IconButton(
+                            onClick = {
+                                haptics.play(HapticPattern.Click)
+                                formulaFocus = FormulaFocus.ALL
+                            },
+                        ) {
+                            Icon(
+                                Icons.Filled.Info,
+                                contentDescription = "Формулы расчёта",
+                                tint = c.label,
+                                modifier = Modifier.size(20.dp),
+                            )
+                        }
                         IconButton(onClick = { showResetDialog = true }) {
                             Icon(
                                 Icons.Filled.RestartAlt,
@@ -219,7 +243,19 @@ fun PddAppRoot(
                     .padding(start = 16.dp, end = 16.dp, bottom = 96.dp + navBottom),
             )
 
-            // [7] Диалоги; шторка формул — этап 5, тоже последним сиблингом.
+            // [7] Шторка формул и диалоги — последним сиблингом над хромом.
+            SheetPortal(
+                visible = formulaFocus != null,
+                onDismiss = { formulaFocus = null },
+            ) { scrollModifier ->
+                FormulaDetailsSheet(
+                    state = calculator,
+                    focus = lastFormulaFocus,
+                    scrollModifier = scrollModifier,
+                    onDismiss = { formulaFocus = null },
+                )
+            }
+
             if (showResetDialog) {
                 IOSAlertDialog(
                     onDismiss = { showResetDialog = false },

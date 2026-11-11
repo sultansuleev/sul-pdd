@@ -38,7 +38,10 @@ import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.withStyle
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import com.suldev.kit.haptics.HapticPattern
+import com.suldev.kit.haptics.rememberHapticDevice
 import com.suldev.pddkz.domain.formatCurrency
 import com.suldev.pddkz.domain.formatPct
 import com.suldev.pddkz.domain.model.ComparisonOutcome
@@ -53,6 +56,8 @@ val CargoIcon: ImageVector = Icons.Filled.LocalShipping
 fun TintedBlock(
     container: Color,
     modifier: Modifier = Modifier,
+    borderColor: Color = PddTheme.colors.separator,
+    borderWidth: Dp = 0.5.dp,
     content: @Composable () -> Unit,
 ) {
     val shape = RoundedCornerShape(16.dp)
@@ -60,13 +65,13 @@ fun TintedBlock(
         modifier
             .clip(shape)
             .background(container)
-            .border(0.5.dp, PddTheme.colors.separator, shape)
+            .border(borderWidth, borderColor, shape)
             .padding(12.dp),
     ) { content() }
 }
 
 @Composable
-private fun Capsule(text: String, color: Color, container: Color, modifier: Modifier = Modifier) = Text(
+internal fun Capsule(text: String, color: Color, container: Color, modifier: Modifier = Modifier) = Text(
     text = text,
     style = MaterialTheme.typography.labelLarge,
     color = color,
@@ -167,10 +172,20 @@ fun DeliveryMethodCard(
     winner: Boolean,
     dimmed: Boolean,
     modifier: Modifier = Modifier,
+    onClick: (() -> Unit)? = null,
 ) {
     val c = PddTheme.colors
+    val haptics = rememberHapticDevice()
     val alpha by animateFloatAsState(if (dimmed) 0.70f else 1f, tween(200), label = "methodAlpha")
-    GlassCard(modifier.graphicsLayer { this.alpha = alpha }) {
+    GlassCard(
+        modifier = modifier.graphicsLayer { this.alpha = alpha },
+        onClick = onClick?.let { click ->
+            {
+                haptics.play(HapticPattern.Click)
+                click()
+            }
+        },
+    ) {
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
             Icon(icon, contentDescription = null, tint = accent, modifier = Modifier.size(18.dp))
             Column(Modifier.weight(1f)) {

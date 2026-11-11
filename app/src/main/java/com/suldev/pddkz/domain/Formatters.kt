@@ -28,3 +28,17 @@ fun parseQty(text: String): Int? = text.trim().toIntOrNull()?.takeIf { it >= 1 }
 
 /** Курс НБ РК для поля: два знака, десятичная запятая — `66,68`. */
 fun formatRate(value: Double): String = String.format(Locale.US, "%.2f", value).replace('.', ',')
+
+/** Сумма в долларах с двумя знаками: `$ 4.20`. */
+fun formatUsd(usdValue: Double): String = String.format(Locale.US, "$ %.2f", usdValue)
+
+/** Компактное число для формул: до 2 знаков после точки, без хвостовых нулей и с группировкой тысяч. */
+fun formatFormulaDecimal(value: Double): String {
+    if (!value.isFinite()) return "0"
+    val rounded = kotlin.math.round(value * 100.0) / 100.0
+    if (rounded % 1.0 == 0.0) return groupedRound(rounded)
+    val whole = rounded.toLong()
+    val frac = String.format(Locale.US, "%.2f", kotlin.math.abs(rounded - whole)).substring(1).trimEnd('0')
+    val groupedWhole = if (rounded < 0 && whole == 0L) "-0" else groupedRound(whole.toDouble())
+    return groupedWhole + frac
+}

@@ -1,7 +1,9 @@
 package com.suldev.pddkz
 
 import com.suldev.pddkz.domain.formatCurrency
+import com.suldev.pddkz.domain.formatFormulaDecimal
 import com.suldev.pddkz.domain.formatPct
+import com.suldev.pddkz.domain.formatUsd
 import com.suldev.pddkz.domain.formatYuan
 import com.suldev.pddkz.domain.model.CalculatorInput
 import com.suldev.pddkz.domain.model.ComparisonOutcome
@@ -107,6 +109,16 @@ class CalculateDeliveryUseCaseTest {
         assertEquals("$ 0.00", formatCurrency(14165.382, DisplayCurrency.USD, 0.0))
         assertEquals("≈ 214 ¥", formatYuan(214.2))
         assertEquals("≈ 1\u00A0234\u00A0568 ¥", formatYuan(1234567.5))
+        assertEquals("$ 4.20", formatUsd(4.2))
+        assertEquals("147.25", formatFormulaDecimal(147.2528))
+        assertEquals("180", formatFormulaDecimal(180.0))
+        assertEquals("1\u00A0234.5", formatFormulaDecimal(1234.5))
+    }
+
+    @Test
+    fun `break-even is zero when cargo tariff or weight is zero`() {
+        val r = calculate(CalculatorInput(cargoRateUsdPerKg = 0.0), rates)
+        assertEquals(0.0, r.breakEvenItemYuan!!, eps)
     }
 
     @Test

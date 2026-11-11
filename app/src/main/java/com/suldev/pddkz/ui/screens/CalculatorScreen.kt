@@ -50,6 +50,7 @@ fun CalculatorScreen(
     onFieldChange: (Field, String) -> Unit,
     onCurrencyChange: (DisplayCurrency) -> Unit,
     onRefreshRates: () -> Unit,
+    onOpenFormulas: (FormulaFocus) -> Unit,
 ) {
     val c = PddTheme.colors
     val input = state.parsed.input
@@ -119,6 +120,7 @@ fun CalculatorScreen(
                     winner = result.outcome is ComparisonOutcome.KazpostWins,
                     dimmed = result.outcome is ComparisonOutcome.CargoWins,
                     modifier = m,
+                    onClick = { onOpenFormulas(FormulaFocus.KAZPOST) },
                 )
             }
             val cargo: @Composable (Modifier) -> Unit = { m ->
@@ -139,6 +141,7 @@ fun CalculatorScreen(
                     winner = result.outcome is ComparisonOutcome.CargoWins,
                     dimmed = result.outcome is ComparisonOutcome.KazpostWins,
                     modifier = m,
+                    onClick = { onOpenFormulas(FormulaFocus.CARGO) },
                 )
             }
             BoxWithConstraints(Modifier.fillMaxWidth()) {

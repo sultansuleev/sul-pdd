@@ -1,6 +1,6 @@
 # План разработки «Pinduoduo KZ Calc»
 
-Источник требований: [TZ.md](TZ.md). Статус: этапы 0–4 готовы (тесты зелёные; калькулятор сверен с веб-эталоном на эмуляторе API 35), дальше этап 5.
+Источник требований: [TZ.md](TZ.md). Статус: этапы 0–5 готовы (тесты зелёные; шторка формул проверена на эмуляторе API 35 в светлой и тёмной темах), дальше этап 6.
 
 ## Принятые решения
 
@@ -77,7 +77,7 @@
 ## Не проверено до старта
 
 - ~~`RefreshPuck` в `SulTopBar`~~ — есть: параметры `refreshing` и `pullFraction`.
-- Есть ли `SwipeDismissSheet` / `SheetPortal` в `food-track` (этап 5; если нет — пишется с нуля, в кит).
+- ~~Есть ли `SwipeDismissSheet` / `SheetPortal` в `food-track`~~ — нет; реализованы с нуля в `suldev-ui` (`SulSheet.kt`), демо `suldev-ui` и `food-track` собираются.
 - ~~`TOGGLE_ON` / `TOGGLE_OFF` в `HapticPattern`~~ — нет (есть `Click`, `Tick`, `LowTick`, `HeavyClick`, `DoubleTick`, `Error`); на этапе 6 — `View.performHapticFeedback`.
 - ~~Поведение веб-эталона~~ — сверено на этапе 4: дефолты и набор 50 ¥ / 3 кг / 2 шт в KZT и USD совпали до тенге и цента.
 

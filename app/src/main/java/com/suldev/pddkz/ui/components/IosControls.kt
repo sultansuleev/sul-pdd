@@ -1,5 +1,7 @@
 package com.suldev.pddkz.ui.components
 
+import android.os.Build
+import android.view.HapticFeedbackConstants
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -7,6 +9,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -22,13 +25,16 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.error
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -187,5 +193,77 @@ fun IosIconButton(
                 modifier = Modifier.size(18.dp),
             )
         }
+    }
+}
+
+/**
+ * Капсульная кнопка в стиле iOS: минимум 48 dp по высоте, однократный отклик `CONFIRM` при клике.
+ * [filled] = true — акцентная заливка `tint`; false — нейтральная кнопка с тонкой кромкой.
+ */
+@Composable
+fun IosButton(
+    label: String,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    icon: ImageVector? = null,
+    filled: Boolean = true,
+    tint: Color? = null,
+    enabled: Boolean = true,
+    small: Boolean = false,
+) {
+    val c = PddTheme.colors
+    val view = LocalView.current
+    val accent = tint ?: c.tint
+    val shape = RoundedCornerShape(50)
+    val bgModifier = if (filled) {
+        Modifier.background(if (enabled) accent else c.separator.copy(alpha = 0.6f))
+    } else {
+        Modifier
+            .background(c.separator.copy(alpha = 0.22f))
+            .border(0.5.dp, c.glassBorder, shape)
+    }
+    val contentColor = if (filled) {
+        if (enabled) c.onTint else c.onTint.copy(alpha = 0.35f)
+    } else {
+        if (enabled) accent else c.tertiaryLabel
+    }
+
+    Row(
+        modifier = modifier
+            .defaultMinSize(minHeight = 48.dp)
+            .clip(shape)
+            .then(bgModifier)
+            .clickable(enabled = enabled, role = Role.Button) {
+                val feedback = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                    HapticFeedbackConstants.CONFIRM
+                } else {
+                    HapticFeedbackConstants.VIRTUAL_KEY
+                }
+                view.performHapticFeedback(feedback)
+                onClick()
+            }
+            .padding(
+                horizontal = if (small) 14.dp else 18.dp,
+                vertical = if (small) 7.dp else 12.dp,
+            ),
+        horizontalArrangement = Arrangement.spacedBy(7.dp, Alignment.CenterHorizontally),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        if (icon != null) {
+            Icon(
+                imageVector = icon,
+                contentDescription = null,
+                tint = contentColor,
+                modifier = Modifier.size(if (small) 15.dp else 18.dp),
+            )
+        }
+        Text(
+            text = label,
+            style = if (small) MaterialTheme.typography.labelMedium else MaterialTheme.typography.labelLarge,
+            fontWeight = FontWeight.SemiBold,
+            color = contentColor,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+        )
     }
 }
