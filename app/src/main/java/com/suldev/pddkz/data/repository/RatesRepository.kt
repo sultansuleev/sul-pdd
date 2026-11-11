@@ -20,6 +20,7 @@ class RatesRepository(
 
     /** Первичная загрузка и pull-to-refresh: сразу показывает кэш, затем идёт в сеть. */
     suspend fun refresh() {
+        _state.value = _state.value.copy(status = RatesStatus.Loading)
         val cached = storage.cachedRates()
         _state.value = RatesState(cached ?: _state.value.rates, RatesStatus.Loading)
 

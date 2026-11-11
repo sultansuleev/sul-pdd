@@ -197,7 +197,8 @@ fun IosIconButton(
 }
 
 /**
- * Капсульная кнопка в стиле iOS: минимум 48 dp по высоте, однократный отклик `CONFIRM` при клике.
+ * Капсульная кнопка в стиле iOS: минимум 48 dp по высоте, однократный отклик при клике
+ * (`CONFIRM` по умолчанию, `REJECT` при [destructive] = true).
  * [filled] = true — акцентная заливка `tint`; false — нейтральная кнопка с тонкой кромкой.
  */
 @Composable
@@ -210,9 +211,11 @@ fun IosButton(
     tint: Color? = null,
     enabled: Boolean = true,
     small: Boolean = false,
+    destructive: Boolean = false,
 ) {
     val c = PddTheme.colors
     val view = LocalView.current
+    val haptics = rememberHapticDevice()
     val accent = tint ?: c.tint
     val shape = RoundedCornerShape(50)
     val bgModifier = if (filled) {
@@ -234,12 +237,16 @@ fun IosButton(
             .clip(shape)
             .then(bgModifier)
             .clickable(enabled = enabled, role = Role.Button) {
-                val feedback = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-                    HapticFeedbackConstants.CONFIRM
+                if (destructive) {
+                    haptics.play(HapticPattern.Error)
                 } else {
-                    HapticFeedbackConstants.VIRTUAL_KEY
+                    val feedback = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                        HapticFeedbackConstants.CONFIRM
+                    } else {
+                        HapticFeedbackConstants.VIRTUAL_KEY
+                    }
+                    view.performHapticFeedback(feedback)
                 }
-                view.performHapticFeedback(feedback)
                 onClick()
             }
             .padding(
@@ -266,4 +273,14 @@ fun IosButton(
             overflow = TextOverflow.Ellipsis,
         )
     }
+}
+
+/** Тактильный отклик переключения тумблера (`TOGGLE_ON` / `TOGGLE_OFF` на API 34+, фолбэк `CLOCK_TICK`). */
+fun android.view.View.playToggleHaptic(on: Boolean) {
+    val constant = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+        if (on) HapticFeedbackConstants.TOGGLE_ON else HapticFeedbackConstants.TOGGLE_OFF
+    } else {
+        HapticFeedbackConstants.CLOCK_TICK
+    }
+    performHapticFeedback(constant)
 }

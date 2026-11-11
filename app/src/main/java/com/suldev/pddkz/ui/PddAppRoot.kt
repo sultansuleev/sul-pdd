@@ -1,6 +1,11 @@
 package com.suldev.pddkz.ui
 
 import android.app.Activity
+import android.content.Context
+import android.provider.Settings
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.PickVisualMediaRequest
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
@@ -15,59 +20,68 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Calculate
 import androidx.compose.material.icons.filled.Info
-import androidx.compose.material.icons.filled.Tune
-import androidx.compose.material3.SnackbarHost
-import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material.icons.filled.RestartAlt
+import androidx.compose.material.icons.filled.Tune
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.foundation.layout.size
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.snapshotFlow
-import androidx.compose.ui.platform.LocalDensity
-import com.suldev.kit.haptics.HapticPattern
-import com.suldev.kit.haptics.rememberHapticDevice
-import com.suldev.kit.touch.rememberIosOverscrollEffect
-import com.suldev.pddkz.ui.components.IOSAlertDialog
-import com.suldev.pddkz.ui.components.SheetPortal
-import com.suldev.pddkz.ui.screens.FormulaDetailsSheet
-import com.suldev.pddkz.ui.screens.FormulaFocus
-import com.suldev.pddkz.ui.viewmodel.PddCalculatorViewModel
-import kotlinx.coroutines.flow.filter
 import androidx.compose.runtime.SideEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.unit.dp
 import androidx.core.view.WindowCompat
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import com.materialfluid.compose.MaterialFluidMaterial
 import com.materialfluid.compose.materialFluidPointer
 import com.materialfluid.compose.materialFluidSource
 import com.materialfluid.compose.rememberMaterialFluidState
+import com.suldev.kit.haptics.HapticPattern
+import com.suldev.kit.haptics.rememberHapticDevice
 import com.suldev.kit.touch.FloatingBarsTapGuard
+import com.suldev.kit.touch.rememberIosOverscrollEffect
+import com.suldev.pddkz.data.storage.BackgroundImageStorage
 import com.suldev.pddkz.domain.model.AppSettings
 import com.suldev.pddkz.ui.components.AppBackground
 import com.suldev.pddkz.ui.components.GlassSnackbar
+import com.suldev.pddkz.ui.components.IOSAlertDialog
+import com.suldev.pddkz.ui.components.SheetPortal
+import com.suldev.pddkz.ui.components.rememberBackgroundImage
 import com.suldev.pddkz.ui.screens.CalculatorScreen
+import com.suldev.pddkz.ui.screens.FormulaDetailsSheet
+import com.suldev.pddkz.ui.screens.FormulaFocus
 import com.suldev.pddkz.ui.screens.SettingsScreen
 import com.suldev.pddkz.ui.theme.PddTheme
+import com.suldev.pddkz.ui.viewmodel.PddCalculatorViewModel
 import com.suldev.ui.SulGlassTabBar
 import com.suldev.ui.SulTab
 import com.suldev.ui.SulTopBar
+import kotlinx.coroutines.flow.filter
+import kotlinx.coroutines.launch
 
 private val Tabs = listOf(
     SulTab("Калькулятор", Icons.Filled.Calculate),
@@ -84,15 +98,54 @@ private val TabTitles = listOf("Pinduoduo KZ Calc", "Настройки")
 fun PddAppRoot(
     settings: AppSettings,
     backgroundFileName: String?,
+    backgroundImageStorage: BackgroundImageStorage,
     onUpdateSettings: ((AppSettings) -> AppSettings) -> Unit,
     viewModel: PddCalculatorViewModel,
 ) {
+    val context = LocalContext.current
+    val lifecycleOwner = LocalLifecycleOwner.current
+    val scope = rememberCoroutineScope()
     val calculator by viewModel.uiState.collectAsState()
     val haptics = rememberHapticDevice()
     var showResetDialog by remember { mutableStateOf(false) }
     var formulaFocus by rememberSaveable { mutableStateOf<FormulaFocus?>(null) }
     var lastFormulaFocus by rememberSaveable { mutableStateOf(FormulaFocus.ALL) }
     formulaFocus?.let { lastFormulaFocus = it }
+
+    var highContrast by remember { mutableStateOf(readHighTextContrast(context)) }
+    var reduceMotion by remember { mutableStateOf(readAnimatorScaleZero(context)) }
+    DisposableEffect(lifecycleOwner, context) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_RESUME) {
+                highContrast = readHighTextContrast(context)
+                reduceMotion = readAnimatorScaleZero(context)
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
+    }
+
+    var dimPreview by remember(settings.dimOpacity) { mutableStateOf<Float?>(null) }
+    val effectiveDim = dimPreview ?: settings.dimOpacity
+
+    val snackbarHostState = remember { SnackbarHostState() }
+    val photoPicker = rememberLauncherForActivityResult(ActivityResultContracts.PickVisualMedia()) { uri ->
+        if (uri != null) {
+            scope.launch {
+                backgroundImageStorage.saveFromUri(context.contentResolver, uri)
+                    .onSuccess { snackbarHostState.showSnackbar("Фото фона обновлено") }
+                    .onFailure { snackbarHostState.showSnackbar("Не удалось загрузить изображение") }
+            }
+        }
+    }
+
+    var awaitingRatesFeedback by remember { mutableStateOf(false) }
+    LaunchedEffect(calculator.refreshing, awaitingRatesFeedback) {
+        if (awaitingRatesFeedback && !calculator.refreshing) {
+            awaitingRatesFeedback = false
+            snackbarHostState.showSnackbar("Курсы НБ РК: ${calculator.rates.status.label}")
+        }
+    }
 
     // Pull-to-refresh: шайба в баре едет за сырой тягой списка, порог 80 dp.
     val calculatorOverscroll = rememberIosOverscrollEffect()
@@ -118,7 +171,6 @@ fun PddAppRoot(
     val scrolled by remember {
         derivedStateOf { (if (activeTab == 0) calculatorList else settingsList).firstVisibleItemIndex > 0 }
     }
-    val snackbarHostState = remember { SnackbarHostState() }
 
     PddTheme(
         themeMode = settings.themeMode,
@@ -129,8 +181,13 @@ fun PddAppRoot(
         val c = PddTheme.colors
         SystemBarIcons(lightIcons = c.isDark)
         val navBottom = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
+        val backgroundImage = rememberBackgroundImage(
+            style = settings.backgroundStyle,
+            backgroundFileName = backgroundFileName,
+            onDecodeFailed = { scope.launch { backgroundImageStorage.clear() } },
+        )
         val background: @Composable () -> Unit = {
-            AppBackground(settings.backgroundStyle, backgroundFileName, settings.dimOpacity)
+            AppBackground(settings.backgroundStyle, backgroundImage, effectiveDim)
         }
 
         Box(Modifier.fillMaxSize().materialFluidPointer(glassState)) {
@@ -159,7 +216,31 @@ fun PddAppRoot(
                             onRefreshRates = viewModel::refreshRates,
                             onOpenFormulas = { formulaFocus = it },
                         )
-                        else -> SettingsScreen(settingsList, settings, onUpdateSettings)
+                        else -> SettingsScreen(
+                            listState = settingsList,
+                            settings = settings,
+                            hasBackgroundPhoto = !backgroundFileName.isNullOrBlank(),
+                            rates = calculator.rates,
+                            highContrast = highContrast,
+                            reduceMotion = reduceMotion,
+                            onUpdateSettings = onUpdateSettings,
+                            onPreviewDimOpacity = { dimPreview = it },
+                            onPickPhoto = {
+                                photoPicker.launch(
+                                    PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly),
+                                )
+                            },
+                            onClearPhoto = {
+                                scope.launch {
+                                    backgroundImageStorage.clear()
+                                    snackbarHostState.showSnackbar("Фото фона удалено")
+                                }
+                            },
+                            onRefreshRates = {
+                                awaitingRatesFeedback = true
+                                viewModel.refreshRates()
+                            },
+                        )
                     }
                 }
             }
@@ -286,3 +367,11 @@ private fun SystemBarIcons(lightIcons: Boolean) {
         }
     }
 }
+
+private fun readHighTextContrast(context: Context): Boolean = runCatching {
+    Settings.Secure.getInt(context.contentResolver, "high_text_contrast_enabled", 0) == 1
+}.getOrDefault(false)
+
+private fun readAnimatorScaleZero(context: Context): Boolean = runCatching {
+    Settings.Global.getFloat(context.contentResolver, Settings.Global.ANIMATOR_DURATION_SCALE, 1f) == 0f
+}.getOrDefault(false)
