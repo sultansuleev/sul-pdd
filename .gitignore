@@ -3,5 +3,7 @@
 build/
 .kotlin/
 local.properties
+keystore.properties
+*.jks
+*.keystore
 *.apk
-.DS_Store

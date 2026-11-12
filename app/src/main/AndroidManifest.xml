@@ -4,7 +4,9 @@
     <uses-permission android:name="android.permission.VIBRATE" />
 
     <application
+        android:icon="@mipmap/ic_launcher"
         android:label="Pinduoduo KZ Calc"
+        android:roundIcon="@mipmap/ic_launcher_round"
         android:theme="@style/Theme.PddKz">
         <activity
             android:name=".MainActivity"

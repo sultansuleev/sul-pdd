@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <!-- Handle -->
+    <path
+        android:fillColor="#00000000"
+        android:pathData="M43,39 C43,29 47.5,25 54,25 C60.5,25 65,29 65,39"
+        android:strokeColor="#FFFFFFFF"
+        android:strokeLineCap="round"
+        android:strokeWidth="4.8" />
+    <!-- Shopping bag / parcel body -->
+    <path
+        android:fillColor="#FFFFFFFF"
+        android:pathData="M36,38 L72,38 C76.4,38 80,41.6 80,46 L80,72 C80,76.4 76.4,80 72,80 L36,80 C31.6,80 28,76.4 28,72 L28,46 C28,41.6 31.6,38 36,38 Z" />
+    <!-- Tenge symbol (₸) -->
+    <path
+        android:fillColor="#FFD4261D"
+        android:pathData="M42,47 H66 V51 H42 Z M42,54 H66 V58 H42 Z M52,57 H56 V72 H52 Z" />
+</vector>

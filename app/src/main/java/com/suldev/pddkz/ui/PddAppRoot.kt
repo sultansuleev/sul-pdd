@@ -77,6 +77,8 @@ import com.suldev.pddkz.ui.components.AppBackground
 import com.suldev.pddkz.ui.components.GlassSnackbar
 import com.suldev.pddkz.ui.components.IOSAlertDialog
 import com.suldev.pddkz.ui.components.SheetPortal
+import com.suldev.pddkz.ui.components.HeaderCollapseDistance
+import com.suldev.pddkz.ui.components.headerCollapseProgress
 import com.suldev.pddkz.ui.components.rememberBackgroundImage
 import com.suldev.pddkz.ui.screens.CalculatorScreen
 import com.suldev.pddkz.ui.screens.FormulaDetailsSheet
@@ -178,6 +180,7 @@ fun PddAppRoot(
     var activeTab by rememberSaveable { mutableIntStateOf(0) }
     val calculatorList = rememberLazyListState()
     val settingsList = rememberLazyListState()
+    val collapseDistancePx = with(LocalDensity.current) { HeaderCollapseDistance.toPx() }
     val scrolled by remember {
         derivedStateOf { (if (activeTab == 0) calculatorList else settingsList).firstVisibleItemIndex > 0 }
     }
@@ -328,6 +331,12 @@ fun PddAppRoot(
                             else -> (calculatorOverscroll.rawPullY / pullTriggerPx).coerceIn(0f, 2f)
                         }
                     },
+                    titleProgress = {
+                        val list = if (activeTab == 0) calculatorList else settingsList
+                        val p = list.headerCollapseProgress(collapseDistancePx)
+                        ((p - 0.35f) / 0.65f).coerceIn(0f, 1f)
+                    },
+                    reduceMotion = reduceMotion,
                     modifier = Modifier.align(Alignment.TopCenter).fillMaxWidth(),
                 )
 
